@@ -98,14 +98,7 @@ class Toxiproxy
   def self.populate(*proxies)
     proxies = proxies.first if proxies.first.is_a?(Array)
 
-    proxies.map { |proxy|
-      existing = find_by_name(proxy[:name])
-      if existing && (existing.upstream != proxy[:upstream] || existing.listen != proxy[:listen])
-        existing.destroy
-        existing = false
-      end
-      self.create(proxy) unless existing
-    }.compact
+    proxies.map { |proxy| self.create(proxy) }
   end
 
   def self.running?
@@ -173,17 +166,17 @@ class Toxiproxy
   # the constructor) to `@upstream`. `#down` `#upstream` or `#downstream` can at any time alter the health
   # of this connection.
   def create
-    request = Net::HTTP::Post.new("/proxies")
+    request = Net::HTTP::Post.new("/populate")
     request["Content-Type"] = "application/json"
 
-    hash = {upstream: upstream, name: name, listen: listen, enabled: enabled}
+    hash = [{upstream: upstream, name: name, listen: listen, enabled: enabled}]
     request.body = hash.to_json
 
     response = http_request(request)
     assert_response(response)
 
     new = JSON.parse(response.body)
-    @listen = new["listen"]
+    @listen = new["proxies"][0]["listen"]
 
     self
   end
